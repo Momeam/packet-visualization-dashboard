@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Analytics Dashboard</title>
+    <style>
+        /* 🎨 สไตล์คลีน สะอาดตา (Modern & Clean Theme) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6; color: #1f2937; 
+            padding: 30px; margin: 0;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .card { 
+            background-color: #ffffff; border-radius: 12px; 
+            padding: 24px; margin-bottom: 24px; 
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); 
+        }
+
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }
+        .header h2 { font-size: 20px; font-weight: 600; margin: 0; color: #111827; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .card-title { font-size: 16px; font-weight: 600; margin: 0; color: #374151; }
+        
+        .user-info { font-size: 14px; display: flex; align-items: center; gap: 12px; }
+        
+        .btn { padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+        .btn-primary { background: #3b82f6; color: #ffffff; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-danger { background: #ef4444; color: #ffffff; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #10b981; color: #ffffff; }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: #f59e0b; color: #ffffff; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-outline { background: #ffffff; border: 1px solid #d1d5db; color: #374151; }
+        .btn-outline:hover { background: #f3f4f6; }
+
+        .charts-container { display: flex; gap: 24px; margin-bottom: 24px; height: 320px; }
+        .chart-box { flex: 1; height: 100%; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+        th, td { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f9fafb; font-weight: 600; color: #4b5563; position: sticky; top: 0; z-index: 10; }
+        tbody tr:hover { background-color: #f9fafb; }
+        .log-container { height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .badge-proto { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .role-admin { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+        .role-user { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+
+        .hidden { display: none !important; }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="card header">
+            <h2>Network Analytics</h2>
+            <div class="user-info">
+                <span id="userInfo">Loading...</span>
+                <button id="adminBtn" class="btn btn-primary hidden" onclick="toggleAdminPanel()">Manage Users</button>
+                <button class="btn btn-outline" onclick="logout()">Sign Out</button>
+            </div>
+        </div>
+
+        <div id="adminPanel" class="card hidden">
+            <div class="card-header">
+                <h3 class="card-title">User Management & System Controls</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-warning" id="streamToggleBtn" onclick="toggleStream()">Pause Stream</button>
+                    <button class="btn btn-outline" onclick="clearRadar()">Clear Data</button>
+                </div>
+            </div>
+            <div class="log-container" style="height: auto; max-height: 300px;">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Username</th><th>Role</th><th>Permissions</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="userTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <div class="card chart-box"><canvas id="protocolChart"></canvas></div>
+            <div class="card chart-box"><canvas id="trafficChart"></canvas></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Live Packet Stream</h3>
+                <button class="btn btn-success" onclick="exportToCSV()">Export to CSV</button>
+            </div>
+            <div class="log-container">
+                <table id="packetTable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Protocol</th>
+                            <th>Source IP</th>
+                            <th>Destination IP</th>
+                            <th>Size (Bytes)</th>
+                            <th>Security</th> 
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // 1. Authentication & Authorization
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        const username = localStorage.getItem('username');
+        if (!token) window.location.href = '/';
+
+        document.getElementById('userInfo').innerText = `${username} (${role})`;
+        if (role === 'admin') document.getElementById('adminBtn').classList.remove('hidden');
+
+        function logout() { localStorage.clear(); window.location.href = '/'; }
+
+        // 2. User Management
+        async function toggleAdminPanel() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) loadUsers();
+        }
+
+        async function loadUsers() {
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+            try {
+                const res = await fetch('/api/users', { headers });
+                const users = await res.json();
+                const tbody = document.getElementById('userTableBody');
+                tbody.innerHTML = '';
+                users.forEach(u => {
+                    const isAdmin = u.role === 'admin';
+                    const actionBtn = u.username !== username 
+                        ? `<button class="btn btn-outline" onclick="updateRole(${u.id}, '${isAdmin ? 'user' : 'admin'})">${isAdmin ? 'Demote' : 'Promote'}</button>` 
+                        : '-';
+                    const purgeBtn = u.username !== username 
+                        ? `<button class="btn btn-danger" onclick="deleteUser(${u.id}, '${u.username}')">Delete</button>` 
+                        : '<span style="color:#9ca3af; font-size: 12px;">You</span>';
+                    
+                    tbody.innerHTML += `<tr>
+                        <td>${u.id}</td>
+                        <td>${u.username}</td>
+                        <td><span class="badge ${isAdmin ? 'role-admin' : 'role-user'}">${u.role}</span></td>
+                        <td>${actionBtn}</td>
+                        <td>${purgeBtn}</td>
+                    </tr>`;
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        async function updateRole(id, newRole) {
+            if(confirm(`Change role to ${newRole}?`)) {
+                await fetch(`/api/users/${id}/role`, { 
+                    method: 'PUT', 
+                    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
+                    body: JSON.stringify({ role: newRole }) 
+                });
+                loadUsers();
+            }
+        }
+
+        async function deleteUser(id, name) {
+            if (confirm(`Delete user "${name}"?`)) {
+                await fetch(`/api/users/${id}`, { method: 'DELETE', headers: {'Authorization': `Bearer ${token}`} });
+                loadUsers();
+            }
+        }
+
+        // 3. Controls & Export
+        function exportToCSV() {
+            let csv = 'Time,Protocol,Source,Destination,Size,Security\n';
+            const rows = document.querySelectorAll('#packetTable tbody tr');
+            if (rows.length === 0) return alert("No data.");
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('td');
+                const rowData = Array.from(cols).map(col => col.innerText.replace(',', '')).join(',');
+                csv += rowData + '\n';
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `network_logs_${Date.now()}.csv`;
+            a.click();
+        }
+
+        let streamActive = true;
+        async function toggleStream() {
+            const res = await fetch('/api/system/toggle-stream', { method: 'POST', headers: {'Authorization': `Bearer ${token}`} });
+            const data = await res.json();
+            streamActive = data.status;
+            const btn = document.getElementById('streamToggleBtn');
+            btn.innerText = streamActive ? 'Pause Stream' : 'Resume Stream';
+            btn.className = streamActive ? 'btn btn-warning' : 'btn btn-success';
+        }
+
+        function clearRadar() {
+            if(confirm("Clear dashboard?")) {
+                document.querySelector('#packetTable tbody').innerHTML = '';
+                trafficTimeLabels.length = 0; trafficDataPoints.length = 0; trafficChart.update();
+                for (let prop in protocolData) delete protocolData[prop];
+                protocolChart.data.labels = []; protocolChart.data.datasets[0].data = []; protocolChart.update();
+            }
+        }
+
+        // 🚀 4. High-Performance Engine (Data Batching)
+        const socket = io();
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#4b5563'; 
+
+        const protocolData = {};
+        const protocolChart = new Chart(document.getElementById('protocolChart'), { 
+            type: 'doughnut', 
+            data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'], borderWidth: 2, borderColor: '#ffffff' }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { title: { display: true, text: 'Protocol Distribution' } }, animation: false }
+        });
+
+        const trafficTimeLabels = []; const trafficDataPoints = []; let pktCount = 0;
+        const trafficChart = new Chart(document.getElementById('trafficChart'), {
+            type: 'line',
+            data: { labels: trafficTimeLabels, datasets: [{ label: 'Packets / Sec', data: trafficDataPoints, borderColor: '#3b82f6', fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Network Traffic' } }, scales: { y: { beginAtZero: true } }, animation: false }
+        });
+
+        let packetBuffer = [];
+
+        socket.on('new_packet', (packet) => {
+            pktCount++; 
+            packetBuffer.push(packet); 
+            const proto = packet.protocol ? packet.protocol : 'UNKNOWN';
+            protocolData[proto] = (protocolData[proto] || 0) + 1;
+        });
+
+        setInterval(() => {
+            const now = new Date().toLocaleTimeString('en-GB');
+            trafficTimeLabels.push(now); 
+            trafficDataPoints.push(pktCount); 
+            if (trafficTimeLabels.length > 20) { trafficTimeLabels.shift(); trafficDataPoints.shift(); }
+            trafficChart.update(); 
+            pktCount = 0; 
+        }, 1000);
+
+        setInterval(() => {
+            if (packetBuffer.length > 0) {
+                // Update Charts
+                protocolChart.data.labels = Object.keys(protocolData);
+                protocolChart.data.datasets[0].data = Object.values(protocolData);
+                protocolChart.update();
+
+                // Render Table
+                const tbody = document.querySelector('#packetTable tbody');
+                let newRowsHTML = '';
+                const displayPackets = packetBuffer.slice(-50).reverse();
+                
+                displayPackets.forEach(p => {
+                    const proto = p.protocol ? p.protocol : 'UNKNOWN';
+                    let securityBadge = p.isEncrypted 
+                        ? `<span style="color: #10b981; font-weight: bold; background: #dcfce7; padding: 3px 8px; border-radius: 4px; font-size: 11px;">🔒 ${p.encryptionVersion}</span>`
+                        : `<span style="color: #ef4444; font-weight: bold; background: #fee2e2; padding: 3px 8px; border-radius: 4px; font-size: 11px;">🔓 ${p.encryptionVersion}</span>`;
+
+                    newRowsHTML += `<tr>
+                        <td>${p.timestamp}</td>
+                        <td><span class="badge badge-proto">${proto}</span></td>
+                        <td>${p.src_ip}</td>
+                        <td>${p.dst_ip}</td>
+                        <td>${p.length}</td>
+                        <td>${securityBadge}</td> 
+                    </tr>`;
+                });
+
+                // ✅ เพิ่มบรรทัดที่หายไปเพื่อแสดงผลข้อมูล
+                tbody.insertAdjacentHTML('afterbegin', newRowsHTML);
+
+                // จำกัดจำนวนแถวเพื่อ Performance
+                while (tbody.children.length > 100) {
+                    tbody.removeChild(tbody.lastChild);
+                }
+
+                packetBuffer = [];
+            }
+        }, 1000); 
+    </script>
+</body>
+</html>

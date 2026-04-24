@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Dashboard - Login</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* สีเทาอ่อนสบายตา */
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; margin: 0; color: #1f2937;
+        }
+
+        .auth-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px; width: 350px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .title {
+            font-size: 24px; font-weight: 600; color: #111827;
+            margin-bottom: 24px; text-align: center;
+        }
+
+        .input-group { margin-bottom: 16px; }
+        .input-group label {
+            font-size: 14px; font-weight: 500; color: #4b5563;
+            margin-bottom: 6px; display: block;
+        }
+        .input-group input {
+            width: 100%; padding: 10px 12px; background: #f9fafb;
+            border: 1px solid #d1d5db; border-radius: 6px; color: #111827;
+            font-family: 'Inter', sans-serif; font-size: 14px;
+            box-sizing: border-box; outline: none; transition: border-color 0.2s;
+        }
+        .input-group input:focus { border-color: #3b82f6; background: #ffffff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
+        .btn {
+            width: 100%; padding: 10px 16px; font-size: 15px; font-weight: 500;
+            border: none; border-radius: 6px; cursor: pointer;
+            transition: all 0.2s; font-family: 'Inter', sans-serif;
+        }
+        .btn-primary { background: #3b82f6; color: #ffffff; margin-top: 8px; }
+        .btn-primary:hover { background: #2563eb; }
+        
+        .btn-outline { background: transparent; color: #4b5563; border: 1px solid #d1d5db; margin-top: 12px; }
+        .btn-outline:hover { background: #f3f4f6; color: #1f2937; }
+
+        .message { margin-top: 16px; font-size: 14px; text-align: center; min-height: 20px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="auth-card">
+    <div id="login-section">
+        <div class="title">Welcome Back</div>
+        <div class="input-group">
+            <label>Username</label>
+            <input type="text" id="login-username" placeholder="Enter your username">
+        </div>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="login-password" placeholder="Enter your password">
+        </div>
+        <button class="btn btn-primary" onclick="login()">Sign In</button>
+        <button class="btn btn-outline" onclick="toggleView('register')">Create an account</button>
+    </div>
+
+    <div id="register-section" class="hidden">
+        <div class="title">Register</div>
+        <div class="input-group">
+            <label>Username</label>
+            <input type="text" id="reg-username" placeholder="Choose a username">
+        </div>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="reg-password" placeholder="Create a password">
+        </div>
+        <div class="input-group">
+            <label>Confirm Password</label>
+            <input type="password" id="reg-confirm" placeholder="Confirm your password">
+        </div>
+        <button class="btn btn-primary" onclick="register()">Sign Up</button>
+        <button class="btn btn-outline" onclick="toggleView('login')">Back to login</button>
+    </div>
+
+    <div id="statusMessage" class="message"></div>
+</div>
+
+<script>
+    function toggleView(view) {
+        document.getElementById('statusMessage').innerText = ""; 
+        if (view === 'register') {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('register-section').classList.remove('hidden');
+        } else {
+            document.getElementById('register-section').classList.add('hidden');
+            document.getElementById('login-section').classList.remove('hidden');
+        }
+    }
+
+    async function register() {
+        const u = document.getElementById('reg-username').value;
+        const p = document.getElementById('reg-password').value;
+        const c = document.getElementById('reg-confirm').value;
+        const msg = document.getElementById('statusMessage');
+
+        if(!u || !p || !c) return msg.innerHTML = "<span style='color:#ef4444'>Please fill in all fields.</span>";
+        if(p !== c) return msg.innerHTML = "<span style='color:#ef4444'>Passwords do not match.</span>";
+
+        try {
+            msg.innerHTML = "<span style='color:#6b7280'>Processing...</span>";
+            const res = await fetch('/api/register', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p, role: 'user' }) 
+            });
+            const data = await res.json();
+            if(res.ok) {
+                msg.innerHTML = `<span style='color:#10b981'>${data.message}</span>`;
+                setTimeout(() => toggleView('login'), 1500);
+            } else {
+                msg.innerHTML = `<span style='color:#ef4444'>${data.error}</span>`;
+            }
+        } catch (err) { msg.innerHTML = "<span style='color:#ef4444'>Network error.</span>"; }
+    }
+
+    async function login() {
+        const u = document.getElementById('login-username').value;
+        const p = document.getElementById('login-password').value;
+        const msg = document.getElementById('statusMessage');
+
+        if(!u || !p) return msg.innerHTML = "<span style='color:#ef4444'>Please enter your credentials.</span>";
+
+        try {
+            msg.innerHTML = "<span style='color:#6b7280'>Signing in...</span>";
+            const res = await fetch('/api/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p })
+            });
+            const data = await res.json();
+
+            if(res.ok) {
+                msg.innerHTML = "<span style='color:#10b981'>Login successful!</span>";
+                localStorage.setItem('token', data.token); 
+                localStorage.setItem('role', data.role);
+                localStorage.setItem('username', u);
+                setTimeout(() => { window.location.href = '/dashboard.html'; }, 800);
+            } else {
+                msg.innerHTML = `<span style='color:#ef4444'>${data.error}</span>`;
+            }
+        } catch (err) { msg.innerHTML = "<span style='color:#ef4444'>Network error.</span>"; }
+    }
+</script>
+
+</body>
+</html>
